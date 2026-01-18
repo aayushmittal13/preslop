@@ -168,14 +168,15 @@ async def root():
 async def search(request: SearchRequest):
     query = request.query
     
-    # Enhanced search query
-    enhanced_query = f"{query} (essay OR article OR guide OR analysis) before:2016-01-01"
+    # Simpler, more focused search query
+    # Just add before:2016 filter, don't over-complicate
+    search_query = f"{query} before:2016-01-01"
     
     url = "https://www.googleapis.com/customsearch/v1"
     params = {
         "key": GOOGLE_API_KEY,
         "cx": SEARCH_ENGINE_ID,
-        "q": enhanced_query,
+        "q": search_query,
         "num": 10,
     }
     
@@ -192,25 +193,16 @@ async def search(request: SearchRequest):
         for item in data["items"]:
             score = calculate_quality_score(item)
             
-            # Filter out very low quality (score < 35)
-            if score >= 35:
+            # More lenient filtering - only remove very poor quality
+            if score >= 25:
                 scored_results.append({
                     "item": item,
                     "score": score
                 })
         
-        # If we filtered out everything, lower the threshold
-        if not scored_results:
-            for item in data["items"]:
-                score = calculate_quality_score(item)
-                if score >= 25:
-                    scored_results.append({
-                        "item": item,
-                        "score": score
-                    })
-        
-        # Still nothing? Take whatever we have
-        if not scored_results:
+        # If we still don't have enough results, take everything
+        if len(scored_results) < 3:
+            scored_results = []
             for item in data["items"]:
                 score = calculate_quality_score(item)
                 scored_results.append({
